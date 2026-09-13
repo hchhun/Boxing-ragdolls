@@ -1,0 +1,12 @@
+.DS_Store
+.vscode/
+*.csproj
+*.sln
+/Library/
+/Temp/
+/Logs/
+/UserSettings/
+/obj/
+/Build/
+/Builds/
+mono_crash.*.json
