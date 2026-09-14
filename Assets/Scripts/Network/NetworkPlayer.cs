@@ -10,6 +10,9 @@ public class NetworkPlayer : MonoBehaviour
     [SerializeField]
     ConfigurableJoint mainJoint;
 
+    [SerializeField]
+    Animator animator;
+
     //Input
     Vector2 moveInputVector = Vector2.zero;
     bool isJumpButtonPressed = false;
@@ -22,6 +25,14 @@ public class NetworkPlayer : MonoBehaviour
 
     //Raycasts
     RaycastHit[] raycastHits = new RaycastHit[10];
+
+    //Syncing of physics objects for animation
+    SyncPhysicsObject[] syncPhysicsObjects;
+
+    void Awake()
+    {
+        syncPhysicsObjects = GetComponentsInChildren<SyncPhysicsObject>();
+    }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -61,15 +72,14 @@ public class NetworkPlayer : MonoBehaviour
 
         float inputMagnitude = moveInputVector.magnitude;
 
+        Vector3 localVelocityVsForward = transform.forward * Vector3.Dot(transform.forward, rigidbody3D.linearVelocity);
+        float localForwardVelocity = localVelocityVsForward.magnitude;
+
         if (inputMagnitude != 0) {
             Quaternion desiredDirection = Quaternion.LookRotation(new Vector3(moveInputVector.x, 0, moveInputVector.y * -1), transform.up);
 
             //Rotate target towards direction
             mainJoint.targetRotation = Quaternion.RotateTowards(mainJoint.targetRotation, desiredDirection, Time.fixedDeltaTime * 300);
-
-            Vector3 localVelocityVsForward = transform.forward * Vector3.Dot(transform.forward, rigidbody3D.linearVelocity);
-
-            float localForwardVelocity = localVelocityVsForward.magnitude;
 
             if (localForwardVelocity < maxSpeed) {
                 //Move character in direction it's facing
@@ -78,8 +88,15 @@ public class NetworkPlayer : MonoBehaviour
         }
 
         if(isGrounded && isJumpButtonPressed) {
-            rigidbody3D.AddForce(Vector3.up * 20, ForceMode.Impulse);
+            rigidbody3D.AddForce(Vector3.up * 17, ForceMode.Impulse);
             isJumpButtonPressed = false;
+        }
+
+        animator.SetFloat("movementSpeed", localForwardVelocity * 0.4f);
+
+        //Update joints rotation based on animations
+        for (int i = 0; i < syncPhysicsObjects.Length; i++) {
+            syncPhysicsObjects[i].UpdateJointFromAnimation();
         }
     }
 
