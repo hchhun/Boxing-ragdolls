@@ -1,32 +1,34 @@
 Photon Fusion Physics Addon - Release History
 
-Last tested with Fusion SDK 2.0.5
+## 2.1.2
 
-Version 2.0.6
-- Fix: Fixed obsolete usage of autoSyncTransforms for Unity 6000 or newer
+**Changes**
 
-Version 2.0.5
-- Fix: Teleport handling now discards the correct snapshot and snaps to the teleport location
+- Set the default execution order of Runner.SimulatePhysics to run after the user logic. Default execution order: (1000). 
 
-Version 2.0.4
-- Fix: CaptureExtras() did not store AngularVelocity2D or GravityScale2D for Unity 6
+**Bug fixes**
 
-Version 2.0.3
-- Fix: Added safety check when despawning the NetworkRigidbody to avoid exceptions.
-- Fix: Broken interpolation with interpolation target set and client physics disabled
+- Improvements and fixes to the NetworkRigidbody teleport feature. Local predicted teleports now render instantly, while non-predicted teleports wait the correct interpolation time.
+- Fixed a bug where the local prediction of the physics body sleeping state would persist longer when the tick and send rates were at a 1:1 ratio.
 
-Version 2.0.2
-- Fix: local and world space mixing.
-- Fix: Broken interpolation in shared mode with SyncParent enabled.
+## 2.1.1
 
-Version 2.0.1
-- Fixed reset of Physics.autoSimulation after stopping all network runners.
+**Changes**
 
-Version 2.0.0
-- Initial release.
-- Replaced 'Is Forward' property on RunnerSimulatePhysics2D / RunnerSimulatePhysics3D by 'Client Physics Simulation'.
-  This option allows you to specify behavior of physics simulation on clients. Option are:
-    - Disabled        - physics simulation is not running and transforms are not synced (default).
-    - SyncTransforms  - calls Physics.SyncTransforms() in all ticks.
-    - SimulateForward - calls Physics.SyncTransforms() in resimulation ticks + Physics.Simulate() in forward ticks.
-    - SimulateAlways  - calls Physics.Simulate() in all ticks.
+- Changed obsolete usages of Physics.autoSimulation.
+
+## 2.1.0
+
+**What's New**
+
+- Expose PhysicsBody in NetworkRigidbody that allows unified interactions for both Rigidbody and Rigidbody2D.
+
+**Changes**
+
+- NetworkRigidbody now warns and self-despawns if no Rigidbody or Rigidbody2D component is found on the object.
+
+**Bug Fixes**
+
+- Teleport handling now discards the correct snapshot and snaps to the teleport location.
+- Forcing awake of NetworkRigidbodies on spawned for initial sync.
+- Spawn position of NetworkRigidbody on clients has been fixed.
