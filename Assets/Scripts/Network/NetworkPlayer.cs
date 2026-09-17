@@ -1,11 +1,18 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Fusion;
+using Fusion.Addons.Physics;
 
-public class NetworkPlayer : MonoBehaviour
+public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
 {   
+    public static NetworkPlayer Local {get; set;}
+
     [SerializeField]
     Rigidbody rigidbody3D;
+
+    [SerializeField]
+    NetworkRigidbody networkRigidBody3D;
 
     [SerializeField]
     ConfigurableJoint mainJoint;
@@ -49,55 +56,108 @@ public class NetworkPlayer : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Space)) isJumpButtonPressed = true;
     }
 
-    void FixedUpdate() { 
-        //Assume we are not grounded
-        isGrounded = false;
+    public override void FixedUpdateNetwork() { 
+        Vector3 localVelocityVsForward = Vector3.zero;
+        float localForwardVelocity = 0;
 
-        //Check if grounded
-        int numberOfHits = Physics.SphereCastNonAlloc(rigidbody3D.position, 0.1f, transform.up * (-1), raycastHits, 0.5f);
+        if (Object.HasStateAuthority)
+        {
+            //Assume we are not grounded
+            isGrounded = false;
 
-        //Check for valid results
-        for (int i = 0; i < numberOfHits; i++) {
-            //Ignore self hits
-             if(raycastHits[i].transform.root == transform) continue;
+            //Check if grounded
+            int numberOfHits = Physics.SphereCastNonAlloc(rigidbody3D.position, 0.1f, transform.up * (-1), raycastHits, 0.5f);
 
-             isGrounded = true;
-             break;
+            //Check for valid results
+            for (int i = 0; i < numberOfHits; i++) {
+                //Ignore self hits
+                if(raycastHits[i].transform.root == transform) continue;
+
+                isGrounded = true;
+                break;
+            }
+
+            //Apply extra gravity to characters for less floaty fall
+            if (!isGrounded) {
+                rigidbody3D.AddForce(Vector3.down * 10);
+            }
+
+            localVelocityVsForward = transform.forward * Vector3.Dot(transform.forward, rigidbody3D.linearVelocity);
+            localForwardVelocity = localVelocityVsForward.magnitude;
+            
         }
 
-        //Apply extra gravity to characters for less floaty fall
-        if (!isGrounded) {
-            rigidbody3D.AddForce(Vector3.down * 10);
-        }
 
-        float inputMagnitude = moveInputVector.magnitude;
 
-        Vector3 localVelocityVsForward = transform.forward * Vector3.Dot(transform.forward, rigidbody3D.linearVelocity);
-        float localForwardVelocity = localVelocityVsForward.magnitude;
+        if (GetInput(out NetworkInputData networkInputData)) {
+            float inputMagnitude = networkInputData.movementInput.magnitude;
 
-        if (inputMagnitude != 0) {
-            Quaternion desiredDirection = Quaternion.LookRotation(new Vector3(moveInputVector.x, 0, moveInputVector.y * -1), transform.up);
+            if (inputMagnitude != 0) {
+                Quaternion desiredDirection = Quaternion.LookRotation(new Vector3(networkInputData.movementInput.x, 0, networkInputData.movementInput.y * -1), transform.up);
 
-            //Rotate target towards direction
-            mainJoint.targetRotation = Quaternion.RotateTowards(mainJoint.targetRotation, desiredDirection, Time.fixedDeltaTime * 300);
+                //Rotate target towards direction
+                mainJoint.targetRotation = Quaternion.RotateTowards(mainJoint.targetRotation, desiredDirection, Runner.DeltaTime * 300);
 
-            if (localForwardVelocity < maxSpeed) {
-                //Move character in direction it's facing
-                rigidbody3D.AddForce(transform.forward * inputMagnitude * 30);
+                if (localForwardVelocity < maxSpeed) {
+                    //Move character in direction it's facing
+                    rigidbody3D.AddForce(transform.forward * inputMagnitude * 30);
+                }
+            }
+
+            if(isGrounded && isJumpButtonPressed) {
+                rigidbody3D.AddForce(Vector3.up * 17, ForceMode.Impulse);
+                isJumpButtonPressed = false;
             }
         }
 
-        if(isGrounded && isJumpButtonPressed) {
-            rigidbody3D.AddForce(Vector3.up * 17, ForceMode.Impulse);
-            isJumpButtonPressed = false;
+        if (Object.HasStateAuthority) {
+            animator.SetFloat("movementSpeed", localForwardVelocity * 0.4f);
+
+            //Update joints rotation based on animations
+            for (int i = 0; i < syncPhysicsObjects.Length; i++) {
+                syncPhysicsObjects[i].UpdateJointFromAnimation();
+            }
+
+
+            //CAN PROBS CODE FALL DEATH HERE
+            if (transform.position.y < -10) {
+                networkRigidBody3D.Teleport(new Vector3(0f, 5f, 0f), Quaternion.identity);
+            }
         }
 
-        animator.SetFloat("movementSpeed", localForwardVelocity * 0.4f);
+        
+    }
 
-        //Update joints rotation based on animations
-        for (int i = 0; i < syncPhysicsObjects.Length; i++) {
-            syncPhysicsObjects[i].UpdateJointFromAnimation();
+    public NetworkInputData GetNetworkInput() 
+    {
+        NetworkInputData networkInputData = new NetworkInputData();
+
+        //Move data
+        networkInputData.movementInput = moveInputVector;
+
+        if (isJumpButtonPressed) {
+            networkInputData.isJumpPressed = true;
         }
+
+        //Reset jump button
+        isJumpButtonPressed = false;
+
+        return networkInputData;
+    }
+
+    public override void Spawned() 
+    {
+        if (Object.HasInputAuthority)
+        {
+            Local = this;
+            Utils.DebugLog("Spawned player with input authority");
+        }
+        else Utils.DebugLog("Spawned player without input authority");
+    }
+
+    public void PlayerLeft(PlayerRef player) 
+    {
+
     }
 
 
