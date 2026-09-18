@@ -104,9 +104,10 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
                 }
             }
 
-            if(isGrounded && isJumpButtonPressed) {
+            if(isGrounded && networkInputData.isJumpPressed) {
                 rigidbody3D.AddForce(Vector3.up * 17, ForceMode.Impulse);
-                isJumpButtonPressed = false;
+                networkInputData.isJumpPressed = false;
+                // isJumpButtonPressed = false;
             }
         }
 
@@ -120,9 +121,13 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
 
 
             //CAN PROBS CODE FALL DEATH HERE
-            if (transform.position.y < -10) {
+            // if (transform.position.y < -10) {
+            //     networkRigidBody3D.Teleport(new Vector3(0f, 5f, 0f), Quaternion.identity);
+            // }
+        }
+
+        if (transform.position.y < -10) {
                 networkRigidBody3D.Teleport(new Vector3(0f, 5f, 0f), Quaternion.identity);
-            }
         }
 
         
@@ -141,12 +146,15 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
 
         //Reset jump button
         isJumpButtonPressed = false;
+        // networkInputData.isJumpPressed = false;
 
         return networkInputData;
     }
 
     public override void Spawned() 
-    {
+    {   
+        networkRigidBody3D = GetComponent<NetworkRigidbody>();
+
         if (Object.HasInputAuthority)
         {
             Local = this;

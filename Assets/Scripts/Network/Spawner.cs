@@ -8,7 +8,12 @@ using System;
 public class Spawner : SimulationBehaviour, INetworkRunnerCallbacks
 {
     [SerializeField]
-    NetworkPlayer networkPlayerPrefab;
+    NetworkPlayer networkPlayerPrefab1;
+
+    [SerializeField]
+    NetworkPlayer networkPlayerPrefab2;
+
+    private int _connectedPlayers = 0;
 
 
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
@@ -18,8 +23,18 @@ public class Spawner : SimulationBehaviour, INetworkRunnerCallbacks
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player) 
     { 
         if (runner.IsServer) {
+            if (_connectedPlayers >= 2) {
+                Utils.DebugLog("Too many players");
+                runner.Disconnect(player);
+                return;
+            }
+
+            NetworkPlayer prefabToSpawn = (_connectedPlayers == 0) ? networkPlayerPrefab1 : networkPlayerPrefab2;
+
             Utils.DebugLog("OnPlayerJoined this is the server/host, spawning network player");
-            runner.Spawn(networkPlayerPrefab.gameObject, new Vector3(0f, 5f, 0f), Quaternion.identity, player);
+            runner.Spawn(prefabToSpawn, new Vector3(0f, 5f, 0f), Quaternion.identity, player);
+
+            _connectedPlayers++;
         }
 
         Utils.DebugLog("OnPlayerJoined this is the client");

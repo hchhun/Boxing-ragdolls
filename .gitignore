@@ -2,6 +2,8 @@
 .vscode/
 *.csproj
 *.sln
+*.slnx
+*.app/
 /Library/
 /Temp/
 /Logs/
