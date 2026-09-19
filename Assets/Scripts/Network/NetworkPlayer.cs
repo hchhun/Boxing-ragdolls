@@ -181,16 +181,16 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
         }
         else Utils.DebugLog("Spawned player without input authority");
 
-        // if (!Object.HasStateAuthority)
-        // {
-        //     foreach (var sync in syncPhysicsObjects)
-        //     {
-        //         var rb = sync.GetComponent<Rigidbody>();
-        //         if (rb == null || rb == rigidbody3D) continue;   // leave the root alone
+        if (!Object.HasStateAuthority)
+        {
+            foreach (var sync in syncPhysicsObjects)
+            {
+                var rb = sync.GetComponent<Rigidbody>();
+                if (rb == null || rb == rigidbody3D) continue;   // leave the root alone
 
-        //         rb.isKinematic = true;
-        //     }   
-        // }
+                rb.isKinematic = true;
+            }   
+        }
     }
 
     public void PlayerLeft(PlayerRef player) 
