@@ -36,6 +36,8 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
     //Syncing of physics objects for animation
     SyncPhysicsObject[] syncPhysicsObjects;
 
+    [Networked, Capacity(10)] public NetworkArray<Quaternion> networkPhysicsSyncedRotations { get; }
+
     void Awake()
     {
         syncPhysicsObjects = GetComponentsInChildren<SyncPhysicsObject>();
@@ -84,9 +86,12 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
 
             localVelocityVsForward = transform.forward * Vector3.Dot(transform.forward, rigidbody3D.linearVelocity);
             localForwardVelocity = localVelocityVsForward.magnitude;
+
+            if (transform.position.y < -10) {
+                networkRigidBody3D.Teleport(new Vector3(0f, 5f, 0f), Quaternion.identity);
+            }
             
         }
-
 
 
         if (GetInput(out NetworkInputData networkInputData)) {
@@ -109,28 +114,44 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
                 networkInputData.isJumpPressed = false;
                 // isJumpButtonPressed = false;
             }
+
         }
 
+        
+
         if (Object.HasStateAuthority) {
+            
             animator.SetFloat("movementSpeed", localForwardVelocity * 0.4f);
 
             //Update joints rotation based on animations
             for (int i = 0; i < syncPhysicsObjects.Length; i++) {
                 syncPhysicsObjects[i].UpdateJointFromAnimation();
+                networkPhysicsSyncedRotations.Set(i, syncPhysicsObjects[i].transform.localRotation);
+
             }
 
 
-            //CAN PROBS CODE FALL DEATH HERE
-            // if (transform.position.y < -10) {
-            //     networkRigidBody3D.Teleport(new Vector3(0f, 5f, 0f), Quaternion.identity);
-            // }
+        //     //CAN PROBS CODE FALL DEATH HERE
+        //     // if (transform.position.y < -10) {
+        //     //     networkRigidBody3D.Teleport(new Vector3(0f, 5f, 0f), Quaternion.identity);
+        //     // }
         }
 
-        if (transform.position.y < -10) {
-                networkRigidBody3D.Teleport(new Vector3(0f, 5f, 0f), Quaternion.identity);
-        }
+        // if (transform.position.y < -10) {
+        //         networkRigidBody3D.Teleport(new Vector3(0f, 5f, 0f), Quaternion.identity);
+                
+        // }
+    }
 
-        
+    public override void Render() 
+    {   
+        if (!Object.HasStateAuthority) {
+            var interpolated = new NetworkBehaviourBufferInterpolator(this);
+
+            for (int i = 0; i < syncPhysicsObjects.Length; i++) {
+                syncPhysicsObjects[i].transform.localRotation = Quaternion.Slerp(syncPhysicsObjects[i].transform.localRotation, networkPhysicsSyncedRotations.Get(i), interpolated.Alpha);
+            }
+        }
     }
 
     public NetworkInputData GetNetworkInput() 
@@ -153,14 +174,23 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
 
     public override void Spawned() 
     {   
-        networkRigidBody3D = GetComponent<NetworkRigidbody>();
-
         if (Object.HasInputAuthority)
         {
             Local = this;
             Utils.DebugLog("Spawned player with input authority");
         }
         else Utils.DebugLog("Spawned player without input authority");
+
+        // if (!Object.HasStateAuthority)
+        // {
+        //     foreach (var sync in syncPhysicsObjects)
+        //     {
+        //         var rb = sync.GetComponent<Rigidbody>();
+        //         if (rb == null || rb == rigidbody3D) continue;   // leave the root alone
+
+        //         rb.isKinematic = true;
+        //     }   
+        // }
     }
 
     public void PlayerLeft(PlayerRef player) 
