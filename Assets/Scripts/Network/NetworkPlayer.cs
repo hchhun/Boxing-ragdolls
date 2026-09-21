@@ -24,12 +24,15 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
     //Input
     Vector2 moveInputVector = Vector2.zero;
     bool isJumpButtonPressed = false;
+    bool isGrabButtonPressed = false;
 
     //Controller Settings
     float maxSpeed = 3;
 
     //States
     bool isGrounded = false;
+    public bool isGrabbingActive = false;
+    // public bool isGrabbingActive => isGrabbingActive;
 
     //Raycasts
     RaycastHit[] raycastHits = new RaycastHit[10];
@@ -42,9 +45,13 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
 
     [Networked, Capacity(10)] public NetworkArray<Quaternion> networkPhysicsSyncedRotations { get; }
 
+    // Grab handler
+    HandGrabHandler[] handGrabHandlers;
+
     void Awake()
     {
         syncPhysicsObjects = GetComponentsInChildren<SyncPhysicsObject>();
+        handGrabHandlers = GetComponentsInChildren<HandGrabHandler>();
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -60,6 +67,7 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
         moveInputVector.y = Input.GetAxis("Vertical");
 
         if (Input.GetKeyDown(KeyCode.Space)) isJumpButtonPressed = true;
+        isGrabButtonPressed = Input.GetKey(KeyCode.N);
     }
 
     public override void FixedUpdateNetwork() { 
@@ -100,6 +108,7 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
 
         if (GetInput(out NetworkInputData networkInputData)) {
             float inputMagnitude = networkInputData.movementInput.magnitude;
+            isGrabbingActive = networkInputData.isGrabPressed;
 
             if (inputMagnitude != 0) {
                 Quaternion desiredDirection = Quaternion.LookRotation(new Vector3(networkInputData.movementInput.x, 0, networkInputData.movementInput.y * -1), transform.up);
@@ -139,6 +148,10 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
         //     // if (transform.position.y < -10) {
         //     //     networkRigidBody3D.Teleport(new Vector3(0f, 5f, 0f), Quaternion.identity);
         //     // }
+
+            foreach (HandGrabHandler handGrabHandler in handGrabHandlers) {
+                handGrabHandler.UpdateState();
+            }
         }
 
         // if (transform.position.y < -10) {
@@ -172,6 +185,10 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
 
         if (isJumpButtonPressed) {
             networkInputData.isJumpPressed = true;
+        }
+
+        if (isGrabButtonPressed) {
+            networkInputData.isGrabPressed = true;
         }
 
         //Reset jump button

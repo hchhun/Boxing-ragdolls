@@ -57,5 +57,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95027f12a7c734c02acd1709e429fb36, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Spawner
-  networkPlayerPrefab1: {fileID: 1870164837877603762, guid: 5cf9b0ea474d545bcb6fded82559f94a, type: 3}
+  networkPlayerPrefab1: {fileID: 5294376928632763072, guid: 0885f61146dcc47538c548493434a21f, type: 3}
   networkPlayerPrefab2: {fileID: 4428576086669277486, guid: c2a09c5cd9c8640778873c087f108d4e, type: 3}
