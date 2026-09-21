@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Fusion;
 using Fusion.Addons.Physics;
+using Unity.Cinemachine;
 
 public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
 {   
@@ -35,6 +36,9 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
 
     //Syncing of physics objects for animation
     SyncPhysicsObject[] syncPhysicsObjects;
+
+    CinemachineCamera cinemachineVirtualCamera; 
+    CinemachineBrain cinemachineBrain;
 
     [Networked, Capacity(10)] public NetworkArray<Quaternion> networkPhysicsSyncedRotations { get; }
 
@@ -152,6 +156,11 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
                 syncPhysicsObjects[i].transform.localRotation = Quaternion.Slerp(syncPhysicsObjects[i].transform.localRotation, networkPhysicsSyncedRotations.Get(i), interpolated.Alpha);
             }
         }
+
+        if (Object.HasInputAuthority) {
+            cinemachineBrain.ManualUpdate();
+            cinemachineVirtualCamera.UpdateCameraState(Vector3.up, Runner.LocalAlpha);
+        }
     }
 
     public NetworkInputData GetNetworkInput() 
@@ -177,17 +186,24 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
         if (Object.HasInputAuthority)
         {
             Local = this;
+
+            cinemachineVirtualCamera = FindAnyObjectByType<CinemachineCamera>();
+            cinemachineBrain = FindAnyObjectByType<CinemachineBrain>();
+            cinemachineVirtualCamera.Follow = transform;
+            cinemachineVirtualCamera.LookAt = transform;
+
+            
             Utils.DebugLog("Spawned player with input authority");
         }
         else Utils.DebugLog("Spawned player without input authority");
+
+        transform.name = $"P_{Object.Id}";
 
         if (!Object.HasStateAuthority)
         {
             foreach (var sync in syncPhysicsObjects)
             {
                 var rb = sync.GetComponent<Rigidbody>();
-                if (rb == null || rb == rigidbody3D) continue;   // leave the root alone
-
                 rb.isKinematic = true;
             }   
         }
@@ -195,7 +211,9 @@ public class NetworkPlayer : NetworkBehaviour, IPlayerLeft
 
     public void PlayerLeft(PlayerRef player) 
     {
-
+        if (Object.InputAuthority == player) {
+            Runner.Despawn(Object);
+        }
     }
 
 
